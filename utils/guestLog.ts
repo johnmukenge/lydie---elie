@@ -19,7 +19,8 @@ export type GuestCheckInResult = 'checked-in' | 'already-checked-in' | 'not-foun
 
 const STORAGE_KEY = 'wedding_guest_log';
 const ACCESS_SESSION_KEY = 'wedding_guest_log_access';
-const DEFAULT_ACCESS_CODE = 'wedding-admin';
+const DEFAULT_ACCESS_CODE = '9297';
+const LEGACY_ACCESS_CODE = 'wedding-admin';
 
 const isBrowser = () => typeof window !== 'undefined';
 
@@ -187,9 +188,12 @@ export const hasGuestLogAccess = () => {
 export const grantGuestLogAccess = (code: string) => {
   if (!isBrowser()) return false;
 
-  const expectedCode =
-    (process.env.NEXT_PUBLIC_GUEST_LOG_ACCESS_CODE || DEFAULT_ACCESS_CODE).trim();
-  const isAllowed = code.trim() === expectedCode;
+  const expectedCode = (process.env.NEXT_PUBLIC_GUEST_LOG_ACCESS_CODE || '').trim();
+  const normalizedCode = code.trim();
+
+  const isAllowed = expectedCode
+    ? normalizedCode === expectedCode
+    : normalizedCode === DEFAULT_ACCESS_CODE || normalizedCode === LEGACY_ACCESS_CODE;
 
   if (isAllowed) {
     window.sessionStorage.setItem(ACCESS_SESSION_KEY, 'granted');
