@@ -41,32 +41,56 @@ const useBlob = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 
 async function readEntriesFromBlob(): Promise<GuestLogEntry[]> {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) return [];
+  if (!token) {
+    console.error('[guest-log] BLOB_READ_WRITE_TOKEN is missing!');
+    return [];
+  }
 
-  const { blobs } = await list({ prefix: BLOB_FILE_NAME, limit: 1, token });
-  const fileBlob = blobs[0];
+  try {
+    const { blobs } = await list({ prefix: BLOB_FILE_NAME, limit: 1, token });
+    const fileBlob = blobs[0];
 
-  if (!fileBlob) return [];
+    if (!fileBlob) {
+      console.log('[guest-log] No blob file found');
+      return [];
+    }
 
-  const response = await fetch(fileBlob.url, { cache: 'no-store' });
-  if (!response.ok) return [];
+    console.log('[guest-log] Reading blob from:', fileBlob.url);
+    const response = await fetch(fileBlob.url, { cache: 'no-store' });
+    if (!response.ok) {
+      console.error('[guest-log] Blob fetch failed:', response.status);
+      return [];
+    }
 
-  const data = (await response.json()) as unknown;
-  return Array.isArray(data) ? (data as GuestLogEntry[]) : [];
+    const data = (await response.json()) as unknown;
+    console.log('[guest-log] Blob read successful, entries:', Array.isArray(data) ? data.length : 0);
+    return Array.isArray(data) ? (data as GuestLogEntry[]) : [];
+  } catch (error) {
+    console.error('[guest-log] Error reading from blob:', error);
+    return [];
+  }
 }
 
 async function writeEntriesToBlob(entries: GuestLogEntry[]) {
   const token = process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) {
+    console.error('[guest-log] BLOB_READ_WRITE_TOKEN missing for write!');
     throw new Error('Missing BLOB_READ_WRITE_TOKEN');
   }
 
-  await put(BLOB_FILE_NAME, JSON.stringify(entries, null, 2), {
-    access: 'public',
-    addRandomSuffix: false,
-    contentType: 'application/json',
-    token,
-  });
+  console.log('[guest-log] Writing to blob:', entries.length, 'entries');
+  try {
+    await put(BLOB_FILE_NAME, JSON.stringify(entries, null, 2), {
+      access: 'public',
+      addRandomSuffix: false,
+      contentType: 'application/json',
+      token,
+    });
+    console.log('[guest-log] Blob write successful');
+  } catch (error) {
+    console.error('[guest-log] Blob write failed:', error);
+    throw error;
+  }
 }
 
 async function readEntriesFromFile(): Promise<GuestLogEntry[]> {
@@ -97,8 +121,14 @@ async function readEntries(): Promise<GuestLogEntry[]> {
 
 async function writeEntries(entries: GuestLogEntry[]) {
   if (useBlob()) {
-    await writeEntriesToBlob(entries);
-    return;
+    try {
+      await writeEntriesToBlob(entries);
+      return;
+    } catch (error) {
+      console.error('[guest-log] Blob write error:', error);
+      console.error('[guest-log] Token present:', !!process.env.BLOB_READ_WRITE_TOKEN);
+      throw error;
+    }
   }
 
   await writeEntriesToFile(entries);
@@ -136,7 +166,10 @@ export async function POST(request: Request) {
   const body = parsedBody || {};
 
   const action = body?.action;
+  console.log('[guest-log] POST action:', action, 'useBlob:', useBlob());
+  
   const entries = await readEntries();
+  console.log('[guest-log] Current entries count:', entries.length);
 
   if (action === 'add' && body.guestData && body.language && body.invitationData) {
     const attendanceCount = body.guestData.attendanceType === 'couple' ? 2 : 1;
