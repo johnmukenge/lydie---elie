@@ -9,7 +9,7 @@ import {
   getGuestLog,
   grantGuestLogAccess,
   hasGuestLogAccess,
-  importGuestLog,
+  importGuestLogRemote,
   type GuestLogEntry,
 } from '@/utils/guestLog';
 
@@ -24,24 +24,27 @@ export default function CheckInAdminPanel() {
 
   const isAdminMode = searchParams.get('mode') === 'admin';
 
-  const refresh = useCallback(() => setGuests(getGuestLog()), []);
+  const refresh = useCallback(async () => {
+    const entries = await getGuestLog();
+    setGuests(entries);
+  }, []);
 
   useEffect(() => {
     if (!isAdminMode) return;
     if (hasGuestLogAccess()) {
       setHasAccess(true);
-      refresh();
+      void refresh();
     }
   }, [isAdminMode, refresh]);
 
   if (!isAdminMode) return null;
 
-  const handleUnlock = () => {
+  const handleUnlock = async () => {
     const code = window.prompt('Code d\'accès (4 chiffres) :');
     if (!code) return;
     if (grantGuestLogAccess(code)) {
       setHasAccess(true);
-      refresh();
+      await refresh();
     } else {
       alert('Code invalide.');
     }
@@ -53,9 +56,9 @@ export default function CheckInAdminPanel() {
     setTimeout(() => setFeedback(''), 4000);
   };
 
-  const handleCheckIn = (entry: GuestLogEntry) => {
-    const result = checkInGuestByInvitation(entry.invitationCode, entry.verificationHash);
-    refresh();
+  const handleCheckIn = async (entry: GuestLogEntry) => {
+    const result = await checkInGuestByInvitation(entry.invitationCode, entry.verificationHash);
+    await refresh();
     if (result === 'checked-in')
       showFeedback(`✅ ${entry.firstName} ${entry.lastName} — Check-in confirmé !`, 'ok');
     else if (result === 'already-checked-in')
@@ -68,14 +71,16 @@ export default function CheckInAdminPanel() {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (evt) => {
-      try {
-        const parsed = JSON.parse(evt.target?.result as string) as GuestLogEntry[];
-        const { added, skipped } = importGuestLog(parsed);
-        refresh();
-        showFeedback(`✅ ${added} ajouté(s), ${skipped} ignoré(s) (déjà présents).`, 'ok');
-      } catch {
-        showFeedback('❌ Fichier invalide.', 'err');
-      }
+      void (async () => {
+        try {
+          const parsed = JSON.parse(evt.target?.result as string) as GuestLogEntry[];
+          const { added, skipped } = await importGuestLogRemote(parsed);
+          await refresh();
+          showFeedback(`✅ ${added} ajouté(s), ${skipped} ignoré(s) (déjà présents).`, 'ok');
+        } catch {
+          showFeedback('❌ Fichier invalide.', 'err');
+        }
+      })();
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -167,7 +172,10 @@ export default function CheckInAdminPanel() {
             {/* Actions */}
             <div className="mb-4 flex flex-wrap gap-2">
               <button
-                onClick={() => { refresh(); showFeedback('✅ Liste actualisée.', 'ok'); }}
+                onClick={async () => {
+                  await refresh();
+                  showFeedback('✅ Liste actualisée.', 'ok');
+                }}
                 className="rounded-full border border-rose-200 bg-white px-4 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition"
               >
                 ↻ Actualiser
@@ -265,8 +273,8 @@ export default function CheckInAdminPanel() {
             )}
 
             <div className="mt-8 space-y-1 text-center text-xs text-rose-300">
-              <p>Données stockées dans ce navigateur. Utilisez toujours le même appareil à l&apos;entrée.</p>
-              <p>Pour partager la liste : exportez JSON depuis l&apos;appareil RSVP et importez ici.</p>
+              <p>Les RSVP sont désormais enregistrés côté serveur dans un fichier central.</p>
+              <p>Conservez l&apos;export JSON comme sauvegarde de sécurité.</p>
               <a href="/" className="mt-2 block text-rose-400 hover:text-rose-600">← Retour au site</a>
             </div>
           </>

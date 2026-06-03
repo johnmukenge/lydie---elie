@@ -21,10 +21,11 @@ const STORAGE_KEY = 'wedding_guest_log';
 const ACCESS_SESSION_KEY = 'wedding_guest_log_access';
 const DEFAULT_ACCESS_CODE = '9297';
 const LEGACY_ACCESS_CODE = 'wedding-admin';
+const API_ENDPOINT = '/api/guest-log';
 
 const isBrowser = () => typeof window !== 'undefined';
 
-export const getGuestLog = (): GuestLogEntry[] => {
+const getGuestLogLocal = (): GuestLogEntry[] => {
   if (!isBrowser()) return [];
 
   const rawValue = window.localStorage.getItem(STORAGE_KEY);
@@ -38,9 +39,52 @@ export const getGuestLog = (): GuestLogEntry[] => {
   }
 };
 
-const saveGuestLog = (entries: GuestLogEntry[]) => {
+const saveGuestLogLocal = (entries: GuestLogEntry[]) => {
   if (!isBrowser()) return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+};
+
+const syncLocalMirror = (entries: GuestLogEntry[]) => {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+};
+
+type GuestLogApiResponse = {
+  entries?: GuestLogEntry[];
+  entry?: GuestLogEntry | null;
+  result?: GuestCheckInResult;
+  added?: number;
+  skipped?: number;
+  error?: string;
+};
+
+async function requestGuestLogApi(
+  payload?: Record<string, unknown>
+): Promise<GuestLogApiResponse | null> {
+  try {
+    const response = await fetch(API_ENDPOINT, {
+      method: payload ? 'POST' : 'GET',
+      headers: payload ? { 'Content-Type': 'application/json' } : undefined,
+      body: payload ? JSON.stringify(payload) : undefined,
+    });
+
+    if (!response.ok) return null;
+
+    return (await response.json()) as GuestLogApiResponse;
+  } catch {
+    return null;
+  }
+}
+
+export const getGuestLog = async (): Promise<GuestLogEntry[]> => {
+  const apiResult = await requestGuestLogApi();
+
+  if (apiResult?.entries) {
+    syncLocalMirror(apiResult.entries);
+    return apiResult.entries;
+  }
+
+  return getGuestLogLocal();
 };
 
 export const saveGuestLogEntry = (
@@ -51,7 +95,20 @@ export const saveGuestLogEntry = (
     invitationCode: string;
     verificationHash: string;
   }
-): GuestLogEntry[] => {
+): Promise<GuestLogEntry[]> => {
+  return (async () => {
+    const apiResult = await requestGuestLogApi({
+      action: 'add',
+      guestData,
+      language,
+      invitationData,
+    });
+
+    if (apiResult?.entries) {
+      syncLocalMirror(apiResult.entries);
+      return apiResult.entries;
+    }
+
   const attendanceCount = guestData.attendanceType === 'couple' ? 2 : 1;
 
   const entry: GuestLogEntry = {
@@ -67,29 +124,58 @@ export const saveGuestLogEntry = (
     createdAt: new Date().toISOString(),
   };
 
-  const updatedLog = [entry, ...getGuestLog()];
+  const updatedLog = [entry, ...getGuestLogLocal()];
 
-  saveGuestLog(updatedLog);
+  saveGuestLogLocal(updatedLog);
 
   return updatedLog;
+  })();
 };
 
-export const findGuestByInvitation = (invitationCode: string, verificationHash: string) => {
+export const findGuestByInvitation = async (
+  invitationCode: string,
+  verificationHash: string
+): Promise<GuestLogEntry | null> => {
+  const apiResult = await requestGuestLogApi({
+    action: 'find',
+    invitationCode,
+    verificationHash,
+  });
+
+  if (typeof apiResult?.entry !== 'undefined') {
+    return apiResult.entry ?? null;
+  }
+
   const normalizedCode = invitationCode.trim().toUpperCase();
   const normalizedHash = verificationHash.trim().toUpperCase();
 
-  return getGuestLog().find(
+  return getGuestLogLocal().find(
     (entry) =>
       entry.invitationCode.trim().toUpperCase() === normalizedCode &&
       entry.verificationHash.trim().toUpperCase() === normalizedHash
-  );
+  ) || null;
 };
 
 export const checkInGuestByInvitation = (
   invitationCode: string,
   verificationHash: string
-): GuestCheckInResult => {
-  const entries = getGuestLog();
+): Promise<GuestCheckInResult> => {
+  return (async () => {
+  const apiResult = await requestGuestLogApi({
+    action: 'checkin',
+    invitationCode,
+    verificationHash,
+  });
+
+  if (apiResult?.result) {
+    if (apiResult.entries) {
+      syncLocalMirror(apiResult.entries);
+    }
+
+    return apiResult.result;
+  }
+
+  const entries = getGuestLogLocal();
   const normalizedCode = invitationCode.trim().toUpperCase();
   const normalizedHash = verificationHash.trim().toUpperCase();
   const targetIndex = entries.findIndex(
@@ -111,11 +197,12 @@ export const checkInGuestByInvitation = (
     checkInStatus: 'checked-in',
   };
 
-  saveGuestLog(entries);
+  saveGuestLogLocal(entries);
   return 'checked-in';
+  })();
 };
 
-export const downloadGuestLogFile = (entries: GuestLogEntry[] = getGuestLog()) => {
+export const downloadGuestLogFile = (entries: GuestLogEntry[] = getGuestLogLocal()) => {
   if (!isBrowser()) return;
 
   const blob = new Blob([JSON.stringify(entries, null, 2)], {
@@ -130,7 +217,7 @@ export const downloadGuestLogFile = (entries: GuestLogEntry[] = getGuestLog()) =
   URL.revokeObjectURL(downloadUrl);
 };
 
-export const downloadGuestLogCsv = (entries: GuestLogEntry[] = getGuestLog()) => {
+export const downloadGuestLogCsv = (entries: GuestLogEntry[] = getGuestLogLocal()) => {
   if (!isBrowser()) return;
 
   const headers = [
@@ -203,11 +290,30 @@ export const grantGuestLogAccess = (code: string) => {
 };
 
 export const importGuestLog = (incoming: GuestLogEntry[]): { added: number; skipped: number } => {
-  const existing = getGuestLog();
+  const existing = getGuestLogLocal();
   const existingCodes = new Set(existing.map((e) => e.invitationCode));
   const newEntries = incoming.filter((e) => !existingCodes.has(e.invitationCode));
-  saveGuestLog([...newEntries, ...existing]);
+  saveGuestLogLocal([...newEntries, ...existing]);
   return { added: newEntries.length, skipped: incoming.length - newEntries.length };
+};
+
+export const importGuestLogRemote = async (
+  incoming: GuestLogEntry[]
+): Promise<{ added: number; skipped: number }> => {
+  const apiResult = await requestGuestLogApi({ action: 'import', incoming });
+
+  if (typeof apiResult?.added === 'number' && typeof apiResult?.skipped === 'number') {
+    if (apiResult.entries) {
+      syncLocalMirror(apiResult.entries);
+    }
+
+    return {
+      added: apiResult.added,
+      skipped: apiResult.skipped,
+    };
+  }
+
+  return importGuestLog(incoming);
 };
 
 function escapeCsvValue(value: unknown) {

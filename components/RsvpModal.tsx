@@ -62,7 +62,7 @@ export default function RsvpModal({ isOpen, onClose, coupleName }: RsvpModalProp
     setIsSubmitting(true);
     try {
       const invitationMetadata = await generatePdfInvitation(formData, language);
-      saveGuestLogEntry(formData, language, invitationMetadata);
+      await saveGuestLogEntry(formData, language, invitationMetadata);
       // Reset form and close modal
       setStep('confirm');
       setFormData({
@@ -126,7 +126,7 @@ export default function RsvpModal({ isOpen, onClose, coupleName }: RsvpModalProp
               <button
                 type="button"
                 className="rounded-full border border-rose-200 px-6 py-2 text-xs font-semibold text-rose-800 transition hover:bg-rose-50"
-                onClick={() => {
+                onClick={async () => {
                   if (!hasGuestLogAccess()) {
                     const code = window.prompt(t('guestRegistryAccessPrompt'));
                     if (!code) return;
@@ -138,7 +138,7 @@ export default function RsvpModal({ isOpen, onClose, coupleName }: RsvpModalProp
                     }
                   }
 
-                  const entries = getGuestLog();
+                  const entries = await getGuestLog();
                   downloadGuestLogFile(entries);
                   downloadGuestLogCsv(entries);
                 }}

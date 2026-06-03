@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import {
@@ -15,6 +15,7 @@ export default function GuestCheckInPanel() {
   const searchParams = useSearchParams();
   const [feedback, setFeedback] = useState<string>('');
   const [alreadyDone, setAlreadyDone] = useState(false);
+  const [guest, setGuest] = useState<Awaited<ReturnType<typeof findGuestByInvitation>>>(null);
 
   const invitationCode = searchParams.get('invitation') || '';
   const verificationHash = searchParams.get('hash') || '';
@@ -33,10 +34,24 @@ export default function GuestCheckInPanel() {
     }
   }, [guestEncoded]);
 
-  // Also try to find guest in local registry (same device)
-  const guest = useMemo(() => {
-    if (!isCheckInMode) return null;
-    return findGuestByInvitation(invitationCode, verificationHash);
+  useEffect(() => {
+    let mounted = true;
+
+    const loadGuest = async () => {
+      if (!isCheckInMode) {
+        if (mounted) setGuest(null);
+        return;
+      }
+
+      const foundGuest = await findGuestByInvitation(invitationCode, verificationHash);
+      if (mounted) setGuest(foundGuest);
+    };
+
+    void loadGuest();
+
+    return () => {
+      mounted = false;
+    };
   }, [invitationCode, verificationHash, isCheckInMode]);
 
   const displayName = guest
@@ -47,7 +62,7 @@ export default function GuestCheckInPanel() {
 
   if (!isCheckInMode) return null;
 
-  const handleValidate = () => {
+  const handleValidate = async () => {
     if (!hasGuestLogAccess()) {
       const code = window.prompt(t('guestRegistryAccessPrompt'));
       if (!code) return;
@@ -58,57 +73,17 @@ export default function GuestCheckInPanel() {
       }
     }
 
-    // If guest is in local registry, use it
-    if (guest) {
-      const result = checkInGuestByInvitation(invitationCode, verificationHash);
-      if (result === 'checked-in') {
-        setFeedback(t('checkInSuccess'));
-        setAlreadyDone(false);
-        return;
-      }
-      if (result === 'already-checked-in') {
-        setFeedback(t('checkInAlreadyDone'));
-        setAlreadyDone(true);
-        return;
-      }
-    }
+    const result = await checkInGuestByInvitation(invitationCode, verificationHash);
 
-    // Guest not in local registry — store a minimal record and mark as checked-in
-    if (!guest && displayName) {
-      const entries = JSON.parse(localStorage.getItem('wedding_guest_log') || '[]');
-      const existing = entries.find(
-        (e: { invitationCode: string; verificationHash: string }) =>
-          e.invitationCode === invitationCode && e.verificationHash === verificationHash
-      );
-      if (existing) {
-        if (existing.checkInStatus === 'checked-in') {
-          setFeedback(t('checkInAlreadyDone'));
-          setAlreadyDone(true);
-          return;
-        }
-        existing.checkInStatus = 'checked-in';
-        localStorage.setItem('wedding_guest_log', JSON.stringify(entries));
-      } else {
-        const nameParts = displayName.split('&')[0].trim().split(' ');
-        const newEntry = {
-          id: `scan-${Date.now()}`,
-          firstName: nameParts[0] || displayName,
-          lastName: nameParts.slice(1).join(' ') || '',
-          attendanceType: guestCountParam > 1 ? 'couple' : 'single',
-          attendanceCount: displayCount,
-          invitationCode,
-          verificationHash,
-          status: 'confirmed',
-          checkInStatus: 'checked-in',
-          language: 'fr',
-          createdAt: new Date().toISOString(),
-          pdfFileName: '',
-        };
-        entries.push(newEntry);
-        localStorage.setItem('wedding_guest_log', JSON.stringify(entries));
-      }
+    if (result === 'checked-in') {
       setFeedback(t('checkInSuccess'));
       setAlreadyDone(false);
+      return;
+    }
+
+    if (result === 'already-checked-in') {
+      setFeedback(t('checkInAlreadyDone'));
+      setAlreadyDone(true);
       return;
     }
 
