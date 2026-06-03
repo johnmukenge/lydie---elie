@@ -47,7 +47,7 @@ async function readEntriesFromBlob(): Promise<GuestLogEntry[]> {
   }
 
   try {
-    const { blobs } = await list({ prefix: BLOB_FILE_NAME, limit: 1, token });
+    const { blobs } = await list({ prefix: BLOB_FILE_NAME, limit: 1 });
     const fileBlob = blobs[0];
 
     if (!fileBlob) {
@@ -84,7 +84,6 @@ async function writeEntriesToBlob(entries: GuestLogEntry[]) {
       access: 'public',
       addRandomSuffix: false,
       contentType: 'application/json',
-      token,
     });
     console.log('[guest-log] Blob write successful');
   } catch (error) {
