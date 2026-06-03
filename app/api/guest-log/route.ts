@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { NextResponse } from 'next/server';
-import { list, put } from '@vercel/blob';
+import { get, put } from '@vercel/blob';
 
 type Language = 'en' | 'fr' | 'it';
 
@@ -47,22 +47,19 @@ async function readEntriesFromBlob(): Promise<GuestLogEntry[]> {
   }
 
   try {
-    const { blobs } = await list({ prefix: BLOB_FILE_NAME, limit: 1 });
-    const fileBlob = blobs[0];
+    const blob = await get(BLOB_FILE_NAME, {
+      access: 'private',
+      token,
+      useCache: false,
+    });
 
-    if (!fileBlob) {
+    if (!blob || blob.statusCode !== 200 || !blob.stream) {
       console.log('[guest-log] No blob file found');
       return [];
     }
 
-    console.log('[guest-log] Reading blob from:', fileBlob.url);
-    const response = await fetch(fileBlob.url, { cache: 'no-store' });
-    if (!response.ok) {
-      console.error('[guest-log] Blob fetch failed:', response.status);
-      return [];
-    }
-
-    const data = (await response.json()) as unknown;
+    const raw = await new Response(blob.stream).text();
+    const data = JSON.parse(raw) as unknown;
     console.log('[guest-log] Blob read successful, entries:', Array.isArray(data) ? data.length : 0);
     return Array.isArray(data) ? (data as GuestLogEntry[]) : [];
   } catch (error) {
@@ -81,9 +78,11 @@ async function writeEntriesToBlob(entries: GuestLogEntry[]) {
   console.log('[guest-log] Writing to blob:', entries.length, 'entries');
   try {
     await put(BLOB_FILE_NAME, JSON.stringify(entries, null, 2), {
-      access: 'public',
+      access: 'private',
       addRandomSuffix: false,
+      allowOverwrite: true,
       contentType: 'application/json',
+      token,
     });
     console.log('[guest-log] Blob write successful');
   } catch (error) {
@@ -124,16 +123,20 @@ async function writeEntries(entries: GuestLogEntry[]) {
       await writeEntriesToBlob(entries);
       return;
     } catch (error) {
-      console.error('[guest-log] Blob write error, falling back to file:', error);
+      console.error('[guest-log] Blob write error:', error);
       console.error('[guest-log] Token present:', !!process.env.BLOB_READ_WRITE_TOKEN);
-      // Fallback to file if Blob fails
-      try {
-        await writeEntriesToFile(entries);
-        return;
-      } catch (fileError) {
-        console.error('[guest-log] File write also failed:', fileError);
-        throw new Error('Both blob and file storage failed');
+      if (!process.env.VERCEL) {
+        // Local fallback only in development
+        try {
+          await writeEntriesToFile(entries);
+          return;
+        } catch (fileError) {
+          console.error('[guest-log] File write also failed:', fileError);
+          throw new Error('Both blob and file storage failed');
+        }
       }
+
+      throw error;
     }
   }
 
@@ -203,13 +206,8 @@ export async function POST(request: Request) {
       };
 
       entries.unshift(entry);
-      try {
-        await writeEntries(entries);
-        console.log('[guest-log] Successfully saved entry');
-      } catch (error) {
-        console.error('[guest-log] Failed to save entry:', error);
-        // Don't throw - entry is in memory, return it anyway
-      }
+      await writeEntries(entries);
+      console.log('[guest-log] Successfully saved entry');
     }
 
     return NextResponse.json({ entries });
@@ -250,13 +248,8 @@ export async function POST(request: Request) {
           checkInStatus: 'checked-in',
         };
 
-        try {
-          await writeEntries(entries);
-          console.log('[guest-log] Check-in saved');
-        } catch (error) {
-          console.error('[guest-log] Failed to save check-in:', error);
-          // Don't throw - check-in is in memory
-        }
+        await writeEntries(entries);
+        console.log('[guest-log] Check-in saved');
         result = 'checked-in';
       }
     }
@@ -269,13 +262,8 @@ export async function POST(request: Request) {
     const toAdd = body.incoming.filter((entry) => !existingCodes.has(entry.invitationCode));
     const updated = [...toAdd, ...entries];
 
-    try {
-      await writeEntries(updated);
-      console.log('[guest-log] Import saved');
-    } catch (error) {
-      console.error('[guest-log] Failed to save import:', error);
-      // Don't throw - import is in memory
-    }
+    await writeEntries(updated);
+    console.log('[guest-log] Import saved');
 
     return NextResponse.json({
       entries: updated,
