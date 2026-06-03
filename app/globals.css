@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  background: linear-gradient(180deg, #fff9f7 0%, #fff5f3 45%, #fffaf2 100%);
+}
+
+.font-serif {
+  font-family: var(--font-playfair), Georgia, serif;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  opacity: 0;
+  animation: fadeInUp 900ms ease forwards;
+}
+
+.fade-in-delay-1 {
+  animation-delay: 140ms;
+}
+
+.fade-in-delay-2 {
+  animation-delay: 280ms;
+}
+
+.fade-in-delay-3 {
+  animation-delay: 420ms;
+}
