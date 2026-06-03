@@ -107,7 +107,7 @@ export const translations: Translations = {
     ceremony: 'Shooting & moments média',
     ceremonyDesc: 'Séances photos et vidéos professionnelles',
     reception: 'Dîner de Réception',
-    receptionDesc: 'New Foncobel, Avenue Kasavubu - Entre Bongolo e Force - Réf. Station Bongolo',
+    receptionDesc: 'New Foncobel, Avenue Kasavubu - Entre Bongolo et Force - Réf. Station Bongolo',
     firstDance: 'Découpe du Gâteau & Célébration',
     firstDanceDesc: 'Découpe du gâteau et célébration.',
     venue: 'Lieu',

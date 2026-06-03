@@ -39,11 +39,11 @@ export const weddingData: WeddingData = {
   venue: {
     name: 'Salle Événementiel - New Foncobel',
     city: 'Kinshasa, Democratic Republic of Congo',
-    address: 'Avenue Kasavubu - Entre Bongolo e Force - Réf. Station Bongolo',
+    address: 'Avenue Kasavubu - Entre Bongolo et Force - Réf. Station Bongolo',
   },
   heroImage:
     'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=2200&q=80',
-  dressCode: 'Propre e chic - Tenue de ville élégante',
+  dressCode: 'Propre et chic - Tenue de ville élégante',
   schedule: [
     {
       title: 'Church Ceremony',
