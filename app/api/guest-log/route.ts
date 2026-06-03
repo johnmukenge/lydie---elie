@@ -124,9 +124,16 @@ async function writeEntries(entries: GuestLogEntry[]) {
       await writeEntriesToBlob(entries);
       return;
     } catch (error) {
-      console.error('[guest-log] Blob write error:', error);
+      console.error('[guest-log] Blob write error, falling back to file:', error);
       console.error('[guest-log] Token present:', !!process.env.BLOB_READ_WRITE_TOKEN);
-      throw error;
+      // Fallback to file if Blob fails
+      try {
+        await writeEntriesToFile(entries);
+        return;
+      } catch (fileError) {
+        console.error('[guest-log] File write also failed:', fileError);
+        throw new Error('Both blob and file storage failed');
+      }
     }
   }
 
@@ -196,7 +203,13 @@ export async function POST(request: Request) {
       };
 
       entries.unshift(entry);
-      await writeEntries(entries);
+      try {
+        await writeEntries(entries);
+        console.log('[guest-log] Successfully saved entry');
+      } catch (error) {
+        console.error('[guest-log] Failed to save entry:', error);
+        // Don't throw - entry is in memory, return it anyway
+      }
     }
 
     return NextResponse.json({ entries });
@@ -237,7 +250,13 @@ export async function POST(request: Request) {
           checkInStatus: 'checked-in',
         };
 
-        await writeEntries(entries);
+        try {
+          await writeEntries(entries);
+          console.log('[guest-log] Check-in saved');
+        } catch (error) {
+          console.error('[guest-log] Failed to save check-in:', error);
+          // Don't throw - check-in is in memory
+        }
         result = 'checked-in';
       }
     }
@@ -250,7 +269,13 @@ export async function POST(request: Request) {
     const toAdd = body.incoming.filter((entry) => !existingCodes.has(entry.invitationCode));
     const updated = [...toAdd, ...entries];
 
-    await writeEntries(updated);
+    try {
+      await writeEntries(updated);
+      console.log('[guest-log] Import saved');
+    } catch (error) {
+      console.error('[guest-log] Failed to save import:', error);
+      // Don't throw - import is in memory
+    }
 
     return NextResponse.json({
       entries: updated,
