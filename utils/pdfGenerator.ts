@@ -50,11 +50,11 @@ export const generatePdfInvitation = async (
         : event.description;
 
       return `
-        <div style="margin: 10px 0 14px 0;">
-          <p style="font-size: 12px; color: #8b5a6e; margin: 0; letter-spacing: 0.4px;">
+        <div style="margin: 5px 0 9px 0;">
+          <p style="font-size: 11px; color: #8b5a6e; margin: 0; letter-spacing: 0.3px; font-family: Georgia, serif;">
             <strong>${escapeHtml(event.time)}</strong> — ${escapeHtml(translatedTitle)}
           </p>
-          <p style="font-size: 11px; color: #9b7280; margin: 6px 0 0 0; line-height: 1.4;">
+          <p style="font-size: 10px; color: #9b7280; margin: 3px 0 0 0; line-height: 1.35; font-family: Georgia, serif;">
             ${escapeHtml(translatedDescription)}
           </p>
         </div>
@@ -108,6 +108,19 @@ export const generatePdfInvitation = async (
     },
   });
 
+  // Load calligraphic Google Font for names in PDF
+  if (typeof document !== 'undefined' && document.fonts) {
+    if (!document.getElementById('great-vibes-font')) {
+      const fontLink = document.createElement('link');
+      fontLink.id = 'great-vibes-font';
+      fontLink.rel = 'stylesheet';
+      fontLink.href = 'https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap';
+      document.head.appendChild(fontLink);
+    }
+    await document.fonts.ready;
+    try { await document.fonts.load('400 70px "Great Vibes"'); } catch { /* use fallback */ }
+  }
+
   // Create a temporary container for the invitation
   const container = document.createElement('div');
   
@@ -123,11 +136,11 @@ export const generatePdfInvitation = async (
     <div style="
       width: 100%;
       height: 100%;
-      padding: 40px;
-      font-family: Georgia, 'Times New Roman', serif;
-      background: linear-gradient(135deg, #fff9f7 0%, #fff5f3 100%);
-      border: 2px solid #d7aeb8;
-      box-shadow: inset 0 0 0 8px #fff9f7, inset 0 0 0 10px #e9c8cf;
+      padding: 38px 48px;
+      font-family: Georgia, 'Palatino Linotype', Palatino, 'Times New Roman', serif;
+      background: linear-gradient(155deg, #fffaf3 0%, #fef7ef 55%, #fef2e8 100%);
+      border: 1.5px solid #b8844a;
+      box-shadow: inset 0 0 0 7px rgba(255,255,255,0.9), inset 0 0 0 9px rgba(184,132,74,0.25);
       position: relative;
       display: flex;
       flex-direction: column;
@@ -137,66 +150,92 @@ export const generatePdfInvitation = async (
       box-sizing: border-box;
       overflow: hidden;
     ">
-      <div style="position: absolute; top: 20px; left: 20px; font-size: 28px; color: #d59aaa;">❀</div>
-      <div style="position: absolute; top: 20px; right: 20px; font-size: 28px; color: #d59aaa;">❀</div>
-      <div style="position: absolute; bottom: 20px; left: 20px; font-size: 28px; color: #d59aaa;">❀</div>
-      <div style="position: absolute; bottom: 20px; right: 20px; font-size: 28px; color: #d59aaa;">❀</div>
 
-      <div style="margin-bottom: 30px;">
-        <p style="font-size: 14px; letter-spacing: 4px; color: #a86c7c; text-transform: uppercase; margin: 0;">
-          ${escapeHtml(localize(language, 'pdfInvitationTitle'))}
-        </p>
-        <h1 style="font-size: 52px; margin: 25px 0; color: #3d1f2a; font-weight: normal;">
-          Lydie & Elie
-        </h1>
-        <p style="font-size: 14px; letter-spacing: 3px; color: #8b5a6e; margin: 10px 0;">
-          ${escapeHtml(localize(language, 'pdfAreDelightedToInvite'))}
-        </p>
-        <p style="font-size: 32px; color: #5a3d42; margin: 15px 0; font-weight: bold;">
-          ${escapeHtml(invitedGuestsText)}
+      <div style="position: absolute; top: 16px; left: 16px; color: #b8844a; font-size: 22px; line-height: 1;">❀</div>
+      <div style="position: absolute; top: 16px; right: 16px; color: #b8844a; font-size: 22px; line-height: 1;">❀</div>
+      <div style="position: absolute; bottom: 16px; left: 16px; color: #b8844a; font-size: 22px; line-height: 1;">❀</div>
+      <div style="position: absolute; bottom: 16px; right: 16px; color: #b8844a; font-size: 22px; line-height: 1;">❀</div>
+
+      <p style="font-size: 10px; letter-spacing: 5px; color: #b8844a; text-transform: uppercase; margin: 0 0 14px 0; font-family: Georgia, serif;">
+        ${escapeHtml(localize(language, 'pdfInvitationTitle'))}
+      </p>
+
+      <div style="display: flex; align-items: center; width: 100%; max-width: 580px; margin-bottom: 16px;">
+        <div style="flex: 1; height: 1px; background: linear-gradient(to right, transparent, #b8844a);"></div>
+        <span style="color: #b8844a; font-size: 14px; margin: 0 14px;">✦</span>
+        <div style="flex: 1; height: 1px; background: linear-gradient(to left, transparent, #b8844a);"></div>
+      </div>
+
+      <p style="font-size: 13px; color: #5c3344; line-height: 1.7; margin: 0 0 6px 0; font-style: italic; max-width: 500px; font-family: Georgia, serif;">
+        ${escapeHtml(localize(language, 'pdfFamiliesAnnounce'))}
+      </p>
+
+      <div style="margin: 16px 0; padding: 16px 32px 12px; border-top: 1.5px solid rgba(184,132,74,0.45); border-bottom: 1.5px solid rgba(184,132,74,0.45); background: rgba(255,255,255,0.45); width: 100%; max-width: 580px; box-sizing: border-box;">
+        <div style="line-height: 1.1; margin-bottom: 8px; white-space: nowrap;">
+          <span style="font-family: 'Great Vibes', 'Palatino Linotype', Palatino, Georgia, cursive; font-size: 70px; font-style: italic; color: #2d1419;">Lydie</span><span style="font-family: Georgia, serif; font-size: 40px; color: #b8844a; font-style: italic; padding: 0 18px; vertical-align: middle;">&amp;</span><span style="font-family: 'Great Vibes', 'Palatino Linotype', Palatino, Georgia, cursive; font-size: 70px; font-style: italic; color: #2d1419;">Elie</span>
+        </div>
+        <p style="font-size: 10px; letter-spacing: 5.5px; color: #b8844a; margin: 0; text-transform: uppercase; font-family: Georgia, serif;">
+          Mujinga &nbsp;&#10022;&nbsp; Katende
         </p>
       </div>
 
-      <div style="margin: 40px 0; border-top: 3px solid #d4a5b0; border-bottom: 3px solid #d4a5b0; padding: 35px 0; width: 100%; max-width: 600px;">
-        <p style="font-size: 13px; letter-spacing: 3px; color: #a86c7c; text-transform: uppercase; margin: 0 0 20px 0;">
-          ${escapeHtml(localize(language, 'pdfToCelebrate'))}
-        </p>
-        <p style="font-size: 18px; color: #3d1f2a; margin: 12px 0; text-transform: capitalize;">
-          ${escapeHtml(formattedWeddingDate)}
-        </p>
-        <p style="font-size: 16px; color: #5a3d42; margin: 25px 0; font-weight: bold;">
-          ${escapeHtml(weddingData.venue.name)}
-        </p>
-        <p style="font-size: 13px; color: #8b5a6e;">
-          ${escapeHtml(weddingData.venue.address)}
-        </p>
+      <p style="font-size: 12.5px; color: #7a4a5e; margin: 4px 0 8px 0; font-style: italic; font-family: Georgia, serif;">
+        ${escapeHtml(localize(language, 'pdfAndInvite'))}
+      </p>
+
+      <p style="font-family: Georgia, 'Palatino Linotype', serif; font-size: 26px; color: #2d1419; font-style: italic; font-weight: bold; margin: 0 0 8px 0; letter-spacing: 0.5px;">
+        ${escapeHtml(invitedGuestsText)}
+      </p>
+
+      <p style="font-size: 12.5px; color: #7a4a5e; margin: 0 0 5px 0; font-style: italic; font-family: Georgia, serif;">
+        ${escapeHtml(localize(language, 'pdfToCelebrateWith'))}
+      </p>
+
+      <p style="font-size: 15px; color: #2d1419; margin: 0 0 4px 0; text-transform: capitalize; font-family: Georgia, serif;">
+        ${escapeHtml(formattedWeddingDate)}
+      </p>
+
+      <p style="font-size: 12.5px; color: #5c3344; margin: 2px 0; font-weight: bold; font-family: Georgia, serif;">
+        ${escapeHtml(weddingData.venue.name)}
+      </p>
+
+      <p style="font-size: 10.5px; color: #9b7280; margin: 2px 0 10px 0; font-family: Georgia, serif;">
+        ${escapeHtml(weddingData.venue.address)}
+      </p>
+
+      <div style="display: flex; align-items: center; width: 100%; max-width: 580px; margin: 8px 0 12px;">
+        <div style="flex: 1; height: 1px; background: linear-gradient(to right, transparent, #b8844a);"></div>
+        <span style="color: #b8844a; font-size: 14px; margin: 0 14px;">✦</span>
+        <div style="flex: 1; height: 1px; background: linear-gradient(to left, transparent, #b8844a);"></div>
       </div>
 
-      <div style="margin-top: 50px; width: 100%; max-width: 620px;">
-        <p style="font-size: 12px; color: #a86c7c; letter-spacing: 2px; margin: 10px 0 14px 0; text-transform: uppercase;">
+      <div style="width: 100%; max-width: 580px; text-align: left;">
+        <p style="font-size: 9.5px; letter-spacing: 4px; color: #b8844a; text-transform: uppercase; margin: 0 0 8px 0; font-family: Georgia, serif; text-align: center;">
           ${escapeHtml(localize(language, 'pdfEventSchedule'))}
         </p>
         ${scheduleHtml}
       </div>
 
-      <div style="margin-top: 60px; font-size: 11px; color: #a86c7c; text-align: center;">
-        <p style="margin: 5px 0;">
-          <strong>${escapeHtml(localize(language, 'pdfGuestCount'))}:</strong> ${guestCount}
-        </p>
-        <div style="margin: 16px auto 8px auto; width: 130px; border: 1px solid #dfbcc5; background: #fff; padding: 6px; border-radius: 10px;">
-          <img src="${qrCodeDataUrl}" alt="QR" style="width: 100%; height: auto; display: block;" />
+      <div style="margin-top: 12px; display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 580px; border-top: 1px solid rgba(184,132,74,0.3); padding-top: 12px;">
+        <div style="text-align: left; font-size: 10px; color: #a06878; font-family: Georgia, serif; flex: 1; padding-right: 14px;">
+          <p style="margin: 2px 0;">
+            <strong>${escapeHtml(localize(language, 'pdfGuestCount'))}:</strong> ${guestCount}
+          </p>
+          <p style="margin: 2px 0;">
+            <strong>${escapeHtml(localize(language, 'pdfGenerated'))}:</strong> ${new Date().toLocaleDateString(getLocale(language))}
+          </p>
+          <p style="margin: 8px 0 0 0; font-size: 8.5px; letter-spacing: 0.5px; color: #b89aaa; text-transform: uppercase; line-height: 1.45;">
+            ${escapeHtml(localize(language, 'pdfValidIfListed'))}
+          </p>
         </div>
-        <p style="margin: 3px 0; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;">
-          ${escapeHtml(localize(language, 'pdfScanToValidate'))}
-        </p>
-        <p style="margin: 5px 0;">
-          <strong>${escapeHtml(localize(language, 'pdfGenerated'))}:</strong> ${new Date().toLocaleDateString(
-            getLocale(language)
-          )}
-        </p>
-        <p style="margin: 12px 0 0 0; font-size: 10px; letter-spacing: 0.8px; color: #9e6f7a; text-transform: uppercase;">
-          ${escapeHtml(localize(language, 'pdfValidIfListed'))}
-        </p>
+        <div style="text-align: center; flex-shrink: 0;">
+          <div style="width: 100px; border: 1px solid #e0bcc8; background: #fff; padding: 5px; border-radius: 6px;">
+            <img src="${qrCodeDataUrl}" alt="QR" style="width: 100%; height: auto; display: block;" />
+          </div>
+          <p style="margin: 4px 0 0 0; font-size: 8.5px; letter-spacing: 0.8px; text-transform: uppercase; color: #a06878; font-family: Georgia, serif;">
+            ${escapeHtml(localize(language, 'pdfScanToValidate'))}
+          </p>
+        </div>
       </div>
     </div>
   `;
@@ -205,7 +244,7 @@ export const generatePdfInvitation = async (
 
   try {
     // Give browser time to render the content
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
     // Render HTML to canvas with optimal settings
     const canvas = await html2canvas(container, {
