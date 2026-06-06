@@ -109,26 +109,7 @@ export const saveGuestLogEntry = (
       return apiResult.entries;
     }
 
-  const attendanceCount = guestData.attendanceType === 'couple' ? 2 : 1;
-
-  const entry: GuestLogEntry = {
-    ...guestData,
-    id: `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    language,
-    pdfFileName: invitationData.fileName,
-    invitationCode: invitationData.invitationCode,
-    verificationHash: invitationData.verificationHash,
-    attendanceCount,
-    status: 'confirmed',
-    checkInStatus: 'pending',
-    createdAt: new Date().toISOString(),
-  };
-
-  const updatedLog = [entry, ...getGuestLogLocal()];
-
-  saveGuestLogLocal(updatedLog);
-
-  return updatedLog;
+    throw new Error('Registration could not be saved on the server. Please try again.');
   })();
 };
 

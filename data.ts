@@ -8,6 +8,8 @@ export type GalleryItem = {
   id: number;
   alt: string;
   src: string;
+  width: number;
+  height: number;
 };
 
 export type WeddingData = {
@@ -71,31 +73,43 @@ export const weddingData: WeddingData = {
       id: 1,
       alt: 'Elie and Lydie portrait 1',
       src: '/media/elie1.jpeg',
+      width: 640,
+      height: 640,
     },
     {
       id: 2,
       alt: 'Lydie portrait',
       src: '/media/lydie1.jpeg',
+      width: 608,
+      height: 1080,
     },
     {
       id: 3,
       alt: 'Elie portrait',
       src: '/media/elie2.jpeg',
+      width: 1202,
+      height: 1599,
     },
     {
       id: 4,
-      alt: 'Lydie and Elie portrait 2',
-      src: '/media/lydie.JPG',
+      alt: 'Lydie portrait 2',
+      src: '/media/lydie2.jpeg',
+      width: 608,
+      height: 1080,
     },
     {
       id: 5,
       alt: 'Wedding hall view 1',
       src: '/media/salle1.jpg',
+      width: 843,
+      height: 1262,
     },
     {
       id: 6,
       alt: 'Wedding hall view 2',
       src: '/media/salle2.jpg',
+      width: 2048,
+      height: 1366,
     },
   ],
   audioUrl: '/media/etoile-du-matin.amr',

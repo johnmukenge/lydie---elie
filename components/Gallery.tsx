@@ -19,22 +19,25 @@ export default function Gallery({ images }: GalleryProps) {
         <p className="mx-auto mt-3 max-w-2xl text-sm text-rose-700">{t('galleryNote')}</p>
       </div>
 
-      <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+      <div className="mt-10 columns-2 gap-3 sm:columns-3 sm:gap-4">
         {images.map((image, index) => (
           <figure
             key={image.id}
-            className="fade-in-up group relative overflow-hidden rounded-2xl shadow-soft"
+            className="fade-in-up relative mb-3 break-inside-avoid overflow-hidden rounded-2xl border border-rose-100 bg-gradient-to-b from-rose-50 to-white shadow-soft transition-shadow duration-300 hover:shadow-md sm:mb-4"
             style={{ animationDelay: `${index * 120}ms` }}
           >
-            <Image
-              src={image.src}
-              alt={image.alt}
-              width={900}
-              height={1200}
-              className="h-44 w-full object-cover transition duration-700 group-hover:scale-105 sm:h-64"
-              sizes="(max-width: 640px) 50vw, 33vw"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+            <div
+              className="relative w-full bg-white/90"
+              style={{ aspectRatio: `${image.width} / ${image.height}` }}
+            >
+              <Image
+                src={image.src}
+                alt={image.alt}
+                fill
+                className="object-contain p-2"
+                sizes="(max-width: 640px) 50vw, 33vw"
+              />
+            </div>
           </figure>
         ))}
       </div>
