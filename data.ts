@@ -72,9 +72,9 @@ export const weddingData: WeddingData = {
     {
       id: 1,
       alt: 'Elie and Lydie portrait 1',
-      src: '/media/elie1.jpeg',
-      width: 640,
-      height: 640,
+      src: '/media/elie1.jpeg?v=20250607',
+      width: 1202,
+      height: 1599,
     },
     {
       id: 2,
@@ -93,9 +93,9 @@ export const weddingData: WeddingData = {
     {
       id: 4,
       alt: 'Lydie portrait 2',
-      src: '/media/lydie2.jpeg',
-      width: 608,
-      height: 1080,
+      src: '/media/lydie2.jpeg?v=20250607',
+      width: 720,
+      height: 1280,
     },
     {
       id: 5,
