@@ -130,30 +130,27 @@ export const saveGuestLogEntry = (
   variant: GuestLogVariant = DEFAULT_VARIANT
 ): Promise<GuestLogEntry[]> => {
   return (async () => {
-    // Check if firstName starts with "Couple " - if so, parse it as "Couple Name Surname"
-    const isCoupleFormat = guestData.firstName?.trim().toLowerCase().startsWith('couple ');
+    // Check if firstName starts with "Couple" - parse as shortcut format.
+    const isCoupleFormat = /^\s*couple\b/i.test(guestData.firstName?.trim() || '');
     let processedGuestData = guestData;
-    
+
     if (isCoupleFormat && guestData.attendanceType === 'couple') {
-      // Extract names from "Couple Name Surname" format
-      const coupleText = guestData.firstName.trim().substring(7).trim(); // Remove "Couple " prefix
-      const nameParts = coupleText.split(/\s+/);
-      
-      if (nameParts.length >= 2) {
-        // Take first part as firstName, rest as lastName
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' ');
-        
-        processedGuestData = {
-          firstName,
-          lastName,
-          attendanceType: 'couple',
-          partnerFirstName: firstName, // Both have same name for couple format
-          partnerLastName: lastName,
-        };
-      }
+      // Extract names from "Couple ..." format and accept even one token (e.g. "Couple Didier").
+      const coupleText = (guestData.firstName || '').replace(/^\s*couple\s*/i, '').trim();
+      const nameParts = coupleText ? coupleText.split(/\s+/) : [];
+
+      const firstName = nameParts[0] || 'Couple';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+      processedGuestData = {
+        firstName,
+        lastName,
+        attendanceType: 'couple',
+        partnerFirstName: firstName,
+        partnerLastName: lastName,
+      };
     }
-    
+
     const apiResult = await requestGuestLogApi({
       action: 'add',
       guestData: processedGuestData,

@@ -32,6 +32,8 @@ export default function RsvpModal({ isOpen, onClose, coupleName, variant = 'reli
     partnerLastName: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isCoupleShortcutInput =
+    formData.attendanceType === 'couple' && /^\s*couple\b/i.test((formData.firstName || '').trim());
 
   if (!isOpen) return null;
 
@@ -56,7 +58,7 @@ export default function RsvpModal({ isOpen, onClose, coupleName, variant = 'reli
     // Check if this is a "Couple Name Surname" format
     const normalizedFirstName = formData.firstName?.trim() || '';
     const normalizedLastName = formData.lastName?.trim() || '';
-    const isCoupleFormat = normalizedFirstName.toLowerCase().startsWith('couple ');
+    const isCoupleFormat = /^\s*couple\b/i.test(normalizedFirstName);
 
     if (!normalizedFirstName) {
       alert(t('formError') || 'Please fill in all fields');
@@ -71,7 +73,7 @@ export default function RsvpModal({ isOpen, onClose, coupleName, variant = 'reli
     }
 
     // For couple type: either "Couple Name Surname" format OR separate first/last names for both
-    if (isCouple && !isCoupleFormat && (!formData.partnerFirstName || !formData.partnerLastName)) {
+    if (isCouple && !isCoupleFormat && (!formData.partnerFirstName?.trim() || !formData.partnerLastName?.trim())) {
       alert(t('formError') || 'Please fill in all fields');
       return;
     }
@@ -233,7 +235,7 @@ export default function RsvpModal({ isOpen, onClose, coupleName, variant = 'reli
                 />
               </div>
 
-              {formData.attendanceType === 'couple' && (
+              {formData.attendanceType === 'couple' && !isCoupleShortcutInput && (
                 <>
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-wide text-rose-700">
