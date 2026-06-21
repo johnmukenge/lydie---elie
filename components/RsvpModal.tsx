@@ -52,11 +52,20 @@ export default function RsvpModal({ isOpen, onClose, coupleName, variant = 'reli
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const isCouple = formData.attendanceType === 'couple';
-    
+
     // Check if this is a "Couple Name Surname" format
-    const isCoupleFormat = formData.firstName?.trim().toLowerCase().startsWith('couple ');
-    
-    if (!formData.firstName || !formData.lastName) {
+    const normalizedFirstName = formData.firstName?.trim() || '';
+    const normalizedLastName = formData.lastName?.trim() || '';
+    const isCoupleFormat = normalizedFirstName.toLowerCase().startsWith('couple ');
+
+    if (!normalizedFirstName) {
+      alert(t('formError') || 'Please fill in all fields');
+      return;
+    }
+
+    // In standard mode, last name is required.
+    // In "Couple ..." shortcut mode, last name can stay empty.
+    if (!isCoupleFormat && !normalizedLastName) {
       alert(t('formError') || 'Please fill in all fields');
       return;
     }
