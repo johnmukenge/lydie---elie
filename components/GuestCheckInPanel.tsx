@@ -8,9 +8,14 @@ import {
   findGuestByInvitation,
   grantGuestLogAccess,
   hasGuestLogAccess,
+  type GuestLogVariant,
 } from '@/utils/guestLog';
 
-export default function GuestCheckInPanel() {
+type GuestCheckInPanelProps = {
+  variant?: GuestLogVariant;
+};
+
+export default function GuestCheckInPanel({ variant = 'religious' }: GuestCheckInPanelProps) {
   const { t } = useLanguage();
   const searchParams = useSearchParams();
   const [feedback, setFeedback] = useState<string>('');
@@ -43,7 +48,7 @@ export default function GuestCheckInPanel() {
         return;
       }
 
-      const foundGuest = await findGuestByInvitation(invitationCode, verificationHash);
+      const foundGuest = await findGuestByInvitation(invitationCode, verificationHash, variant);
       if (mounted) setGuest(foundGuest);
     };
 
@@ -63,17 +68,17 @@ export default function GuestCheckInPanel() {
   if (!isCheckInMode) return null;
 
   const handleValidate = async () => {
-    if (!hasGuestLogAccess()) {
+    if (!hasGuestLogAccess(variant)) {
       const code = window.prompt(t('guestRegistryAccessPrompt'));
       if (!code) return;
-      const isAllowed = grantGuestLogAccess(code);
+      const isAllowed = grantGuestLogAccess(code, variant);
       if (!isAllowed) {
         setFeedback(t('guestRegistryAccessDenied'));
         return;
       }
     }
 
-    const result = await checkInGuestByInvitation(invitationCode, verificationHash);
+    const result = await checkInGuestByInvitation(invitationCode, verificationHash, variant);
 
     if (result === 'checked-in') {
       setFeedback(t('checkInSuccess'));

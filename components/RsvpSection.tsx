@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { useLanguage } from '@/context/LanguageContext';
 import RsvpModal from '@/components/RsvpModal';
+import type { GuestLogVariant } from '@/utils/guestLog';
 
 type RsvpSectionProps = {
   names: string;
+  variant?: GuestLogVariant;
 };
 
-export default function RsvpSection({ names }: RsvpSectionProps) {
+export default function RsvpSection({ names, variant = 'religious' }: RsvpSectionProps) {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -30,7 +32,7 @@ export default function RsvpSection({ names }: RsvpSectionProps) {
         </button>
       </div>
 
-      <RsvpModal isOpen={isOpen} onClose={() => setIsOpen(false)} coupleName={names} />
+      <RsvpModal isOpen={isOpen} onClose={() => setIsOpen(false)} coupleName={names} variant={variant} />
     </section>
   );
 }

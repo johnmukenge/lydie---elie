@@ -10,6 +10,7 @@ import RsvpSection from '@/components/RsvpSection';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import GuestCheckInPanel from '@/components/GuestCheckInPanel';
 import CheckInAdminPanel from '@/components/CheckInAdminPanel';
+import WeddingTypeSelector from '@/components/WeddingTypeSelector';
 import { useLanguage } from '@/context/LanguageContext';
 
 const getLocale = (language: 'en' | 'fr' | 'it') => {
@@ -40,6 +41,7 @@ export default function PageContent() {
   return (
     <main className="bg-rose-50 text-rose-900">
       <LanguageSwitcher />
+      <WeddingTypeSelector currentType="religious" />
       <Suspense fallback={null}>
         <GuestCheckInPanel />
       </Suspense>

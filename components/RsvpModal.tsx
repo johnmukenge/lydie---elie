@@ -11,15 +11,17 @@ import {
   grantGuestLogAccess,
   hasGuestLogAccess,
   saveGuestLogEntry,
+  type GuestLogVariant,
 } from '@/utils/guestLog';
 
 type RsvpModalProps = {
   isOpen: boolean;
   onClose: () => void;
   coupleName: string;
+  variant?: GuestLogVariant;
 };
 
-export default function RsvpModal({ isOpen, onClose, coupleName }: RsvpModalProps) {
+export default function RsvpModal({ isOpen, onClose, coupleName, variant = 'religious' }: RsvpModalProps) {
   const { t, language } = useLanguage();
   const [step, setStep] = useState<'confirm' | 'form'>('confirm');
   const [formData, setFormData] = useState<GuestData>({
@@ -50,11 +52,17 @@ export default function RsvpModal({ isOpen, onClose, coupleName }: RsvpModalProp
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const isCouple = formData.attendanceType === 'couple';
-    if (
-      !formData.firstName ||
-      !formData.lastName ||
-      (isCouple && (!formData.partnerFirstName || !formData.partnerLastName))
-    ) {
+    
+    // Check if this is a "Couple Name Surname" format
+    const isCoupleFormat = formData.firstName?.trim().toLowerCase().startsWith('couple ');
+    
+    if (!formData.firstName || !formData.lastName) {
+      alert(t('formError') || 'Please fill in all fields');
+      return;
+    }
+
+    // For couple type: either "Couple Name Surname" format OR separate first/last names for both
+    if (isCouple && !isCoupleFormat && (!formData.partnerFirstName || !formData.partnerLastName)) {
       alert(t('formError') || 'Please fill in all fields');
       return;
     }
@@ -62,7 +70,7 @@ export default function RsvpModal({ isOpen, onClose, coupleName }: RsvpModalProp
     setIsSubmitting(true);
     try {
       const invitationMetadata = await generatePdfInvitation(formData, language);
-      await saveGuestLogEntry(formData, language, invitationMetadata);
+      await saveGuestLogEntry(formData, language, invitationMetadata, variant);
       // Reset form and close modal
       setStep('confirm');
       setFormData({
@@ -127,20 +135,20 @@ export default function RsvpModal({ isOpen, onClose, coupleName }: RsvpModalProp
                 type="button"
                 className="rounded-full border border-rose-200 px-6 py-2 text-xs font-semibold text-rose-800 transition hover:bg-rose-50"
                 onClick={async () => {
-                  if (!hasGuestLogAccess()) {
+                  if (!hasGuestLogAccess(variant)) {
                     const code = window.prompt(t('guestRegistryAccessPrompt'));
                     if (!code) return;
 
-                    const isAllowed = grantGuestLogAccess(code);
+                    const isAllowed = grantGuestLogAccess(code, variant);
                     if (!isAllowed) {
                       alert(t('guestRegistryAccessDenied'));
                       return;
                     }
                   }
 
-                  const entries = await getGuestLog();
-                  downloadGuestLogFile(entries);
-                  downloadGuestLogCsv(entries);
+                  const entries = await getGuestLog(variant);
+                  downloadGuestLogFile(entries, variant);
+                  downloadGuestLogCsv(entries, variant);
                 }}
               >
                 {t('downloadGuestRegistry')}
@@ -183,6 +191,9 @@ export default function RsvpModal({ isOpen, onClose, coupleName }: RsvpModalProp
                     {t('formCouple')}
                   </button>
                 </div>
+                <p className="mt-2 text-xs text-rose-600">
+                  💡 For couple: enter "Couple Name Surname" in the name field (e.g., "Couple Pippo Baudo") to auto-register both of you.
+                </p>
               </div>
 
               <div>

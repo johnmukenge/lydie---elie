@@ -17,18 +17,46 @@ export type GuestLogEntry = GuestData & {
 
 export type GuestCheckInResult = 'checked-in' | 'already-checked-in' | 'not-found';
 
-const STORAGE_KEY = 'wedding_guest_log';
-const ACCESS_SESSION_KEY = 'wedding_guest_log_access';
+export type GuestLogVariant = 'religious' | 'traditional';
+
+const DEFAULT_VARIANT: GuestLogVariant = 'religious';
 const DEFAULT_ACCESS_CODE = '9297';
 const LEGACY_ACCESS_CODE = 'wedding-admin';
 const API_ENDPOINT = '/api/guest-log';
 
+type GuestLogConfig = {
+  storageKey: string;
+  accessSessionKey: string;
+  downloadFileName: string;
+  apiEndpoint: string;
+};
+
+const getGuestLogConfig = (variant: GuestLogVariant = DEFAULT_VARIANT): GuestLogConfig => {
+  if (variant === 'traditional') {
+    return {
+      storageKey: 'traditional_wedding_guest_log',
+      accessSessionKey: 'traditional_wedding_guest_log_access',
+      downloadFileName: 'traditional-guest-log.json',
+      apiEndpoint: `${API_ENDPOINT}?variant=traditional`,
+    };
+  }
+
+  return {
+    storageKey: 'wedding_guest_log',
+    accessSessionKey: 'wedding_guest_log_access',
+    downloadFileName: 'guest-log.json',
+    apiEndpoint: `${API_ENDPOINT}?variant=religious`,
+  };
+};
+
 const isBrowser = () => typeof window !== 'undefined';
 
-const getGuestLogLocal = (): GuestLogEntry[] => {
+const getGuestLogLocal = (variant: GuestLogVariant = DEFAULT_VARIANT): GuestLogEntry[] => {
   if (!isBrowser()) return [];
 
-  const rawValue = window.localStorage.getItem(STORAGE_KEY);
+  const { storageKey } = getGuestLogConfig(variant);
+
+  const rawValue = window.localStorage.getItem(storageKey);
   if (!rawValue) return [];
 
   try {
@@ -39,14 +67,16 @@ const getGuestLogLocal = (): GuestLogEntry[] => {
   }
 };
 
-const saveGuestLogLocal = (entries: GuestLogEntry[]) => {
+const saveGuestLogLocal = (entries: GuestLogEntry[], variant: GuestLogVariant = DEFAULT_VARIANT) => {
   if (!isBrowser()) return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  const { storageKey } = getGuestLogConfig(variant);
+  window.localStorage.setItem(storageKey, JSON.stringify(entries));
 };
 
-const syncLocalMirror = (entries: GuestLogEntry[]) => {
+const syncLocalMirror = (entries: GuestLogEntry[], variant: GuestLogVariant = DEFAULT_VARIANT) => {
   if (!isBrowser()) return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  const { storageKey } = getGuestLogConfig(variant);
+  window.localStorage.setItem(storageKey, JSON.stringify(entries));
 };
 
 type GuestLogApiResponse = {
@@ -59,13 +89,15 @@ type GuestLogApiResponse = {
 };
 
 async function requestGuestLogApi(
-  payload?: Record<string, unknown>
+  payload?: Record<string, unknown>,
+  variant: GuestLogVariant = DEFAULT_VARIANT
 ): Promise<GuestLogApiResponse | null> {
   try {
-    const response = await fetch(API_ENDPOINT, {
+    const { apiEndpoint } = getGuestLogConfig(variant);
+    const response = await fetch(apiEndpoint, {
       method: payload ? 'POST' : 'GET',
       headers: payload ? { 'Content-Type': 'application/json' } : undefined,
-      body: payload ? JSON.stringify(payload) : undefined,
+      body: payload ? JSON.stringify({ ...payload, variant }) : undefined,
     });
 
     if (!response.ok) return null;
@@ -76,15 +108,15 @@ async function requestGuestLogApi(
   }
 }
 
-export const getGuestLog = async (): Promise<GuestLogEntry[]> => {
-  const apiResult = await requestGuestLogApi();
+export const getGuestLog = async (variant: GuestLogVariant = DEFAULT_VARIANT): Promise<GuestLogEntry[]> => {
+  const apiResult = await requestGuestLogApi(undefined, variant);
 
   if (apiResult?.entries) {
-    syncLocalMirror(apiResult.entries);
+    syncLocalMirror(apiResult.entries, variant);
     return apiResult.entries;
   }
 
-  return getGuestLogLocal();
+  return getGuestLogLocal(variant);
 };
 
 export const saveGuestLogEntry = (
@@ -94,18 +126,44 @@ export const saveGuestLogEntry = (
     fileName: string;
     invitationCode: string;
     verificationHash: string;
-  }
+  },
+  variant: GuestLogVariant = DEFAULT_VARIANT
 ): Promise<GuestLogEntry[]> => {
   return (async () => {
+    // Check if firstName starts with "Couple " - if so, parse it as "Couple Name Surname"
+    const isCoupleFormat = guestData.firstName?.trim().toLowerCase().startsWith('couple ');
+    let processedGuestData = guestData;
+    
+    if (isCoupleFormat && guestData.attendanceType === 'couple') {
+      // Extract names from "Couple Name Surname" format
+      const coupleText = guestData.firstName.trim().substring(7).trim(); // Remove "Couple " prefix
+      const nameParts = coupleText.split(/\s+/);
+      
+      if (nameParts.length >= 2) {
+        // Take first part as firstName, rest as lastName
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(' ');
+        
+        processedGuestData = {
+          firstName,
+          lastName,
+          attendanceType: 'couple',
+          partnerFirstName: firstName, // Both have same name for couple format
+          partnerLastName: lastName,
+        };
+      }
+    }
+    
     const apiResult = await requestGuestLogApi({
       action: 'add',
-      guestData,
+      guestData: processedGuestData,
       language,
       invitationData,
-    });
+      coupleFormat: isCoupleFormat, // Flag to tell API to create duplicate entries
+    }, variant);
 
     if (apiResult?.entries) {
-      syncLocalMirror(apiResult.entries);
+      syncLocalMirror(apiResult.entries, variant);
       return apiResult.entries;
     }
 
@@ -115,13 +173,14 @@ export const saveGuestLogEntry = (
 
 export const findGuestByInvitation = async (
   invitationCode: string,
-  verificationHash: string
+  verificationHash: string,
+  variant: GuestLogVariant = DEFAULT_VARIANT
 ): Promise<GuestLogEntry | null> => {
   const apiResult = await requestGuestLogApi({
     action: 'find',
     invitationCode,
     verificationHash,
-  });
+  }, variant);
 
   if (typeof apiResult?.entry !== 'undefined') {
     return apiResult.entry ?? null;
@@ -130,7 +189,7 @@ export const findGuestByInvitation = async (
   const normalizedCode = invitationCode.trim().toUpperCase();
   const normalizedHash = verificationHash.trim().toUpperCase();
 
-  return getGuestLogLocal().find(
+  return getGuestLogLocal(variant).find(
     (entry) =>
       entry.invitationCode.trim().toUpperCase() === normalizedCode &&
       entry.verificationHash.trim().toUpperCase() === normalizedHash
@@ -139,24 +198,25 @@ export const findGuestByInvitation = async (
 
 export const checkInGuestByInvitation = (
   invitationCode: string,
-  verificationHash: string
+  verificationHash: string,
+  variant: GuestLogVariant = DEFAULT_VARIANT
 ): Promise<GuestCheckInResult> => {
   return (async () => {
   const apiResult = await requestGuestLogApi({
     action: 'checkin',
     invitationCode,
     verificationHash,
-  });
+  }, variant);
 
   if (apiResult?.result) {
     if (apiResult.entries) {
-      syncLocalMirror(apiResult.entries);
+      syncLocalMirror(apiResult.entries, variant);
     }
 
     return apiResult.result;
   }
 
-  const entries = getGuestLogLocal();
+  const entries = getGuestLogLocal(variant);
   const normalizedCode = invitationCode.trim().toUpperCase();
   const normalizedHash = verificationHash.trim().toUpperCase();
   const targetIndex = entries.findIndex(
@@ -178,13 +238,18 @@ export const checkInGuestByInvitation = (
     checkInStatus: 'checked-in',
   };
 
-  saveGuestLogLocal(entries);
+  saveGuestLogLocal(entries, variant);
   return 'checked-in';
   })();
 };
 
-export const downloadGuestLogFile = (entries: GuestLogEntry[] = getGuestLogLocal()) => {
+export const downloadGuestLogFile = (
+  entries: GuestLogEntry[] = getGuestLogLocal(),
+  variant: GuestLogVariant = DEFAULT_VARIANT
+) => {
   if (!isBrowser()) return;
+
+  const { downloadFileName } = getGuestLogConfig(variant);
 
   const blob = new Blob([JSON.stringify(entries, null, 2)], {
     type: 'application/json',
@@ -193,13 +258,18 @@ export const downloadGuestLogFile = (entries: GuestLogEntry[] = getGuestLogLocal
   const downloadUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = downloadUrl;
-  link.download = 'guest-log.json';
+  link.download = downloadFileName;
   link.click();
   URL.revokeObjectURL(downloadUrl);
 };
 
-export const downloadGuestLogCsv = (entries: GuestLogEntry[] = getGuestLogLocal()) => {
+export const downloadGuestLogCsv = (
+  entries: GuestLogEntry[] = getGuestLogLocal(),
+  variant: GuestLogVariant = DEFAULT_VARIANT
+) => {
   if (!isBrowser()) return;
+
+  const { downloadFileName } = getGuestLogConfig(variant);
 
   const headers = [
     'invitationCode',
@@ -243,17 +313,18 @@ export const downloadGuestLogCsv = (entries: GuestLogEntry[] = getGuestLogLocal(
   const downloadUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = downloadUrl;
-  link.download = 'guest-log.csv';
+  link.download = downloadFileName.replace('.json', '.csv');
   link.click();
   URL.revokeObjectURL(downloadUrl);
 };
 
-export const hasGuestLogAccess = () => {
+export const hasGuestLogAccess = (variant: GuestLogVariant = DEFAULT_VARIANT) => {
   if (!isBrowser()) return false;
-  return window.sessionStorage.getItem(ACCESS_SESSION_KEY) === 'granted';
+  const { accessSessionKey } = getGuestLogConfig(variant);
+  return window.sessionStorage.getItem(accessSessionKey) === 'granted';
 };
 
-export const grantGuestLogAccess = (code: string) => {
+export const grantGuestLogAccess = (code: string, variant: GuestLogVariant = DEFAULT_VARIANT) => {
   if (!isBrowser()) return false;
 
   const expectedCode = (process.env.NEXT_PUBLIC_GUEST_LOG_ACCESS_CODE || '').trim();
@@ -264,28 +335,33 @@ export const grantGuestLogAccess = (code: string) => {
     : normalizedCode === DEFAULT_ACCESS_CODE || normalizedCode === LEGACY_ACCESS_CODE;
 
   if (isAllowed) {
-    window.sessionStorage.setItem(ACCESS_SESSION_KEY, 'granted');
+    const { accessSessionKey } = getGuestLogConfig(variant);
+    window.sessionStorage.setItem(accessSessionKey, 'granted');
   }
 
   return isAllowed;
 };
 
-export const importGuestLog = (incoming: GuestLogEntry[]): { added: number; skipped: number } => {
-  const existing = getGuestLogLocal();
+export const importGuestLog = (
+  incoming: GuestLogEntry[],
+  variant: GuestLogVariant = DEFAULT_VARIANT
+): { added: number; skipped: number } => {
+  const existing = getGuestLogLocal(variant);
   const existingCodes = new Set(existing.map((e) => e.invitationCode));
   const newEntries = incoming.filter((e) => !existingCodes.has(e.invitationCode));
-  saveGuestLogLocal([...newEntries, ...existing]);
+  saveGuestLogLocal([...newEntries, ...existing], variant);
   return { added: newEntries.length, skipped: incoming.length - newEntries.length };
 };
 
 export const importGuestLogRemote = async (
-  incoming: GuestLogEntry[]
+  incoming: GuestLogEntry[],
+  variant: GuestLogVariant = DEFAULT_VARIANT
 ): Promise<{ added: number; skipped: number }> => {
-  const apiResult = await requestGuestLogApi({ action: 'import', incoming });
+  const apiResult = await requestGuestLogApi({ action: 'import', incoming }, variant);
 
   if (typeof apiResult?.added === 'number' && typeof apiResult?.skipped === 'number') {
     if (apiResult.entries) {
-      syncLocalMirror(apiResult.entries);
+      syncLocalMirror(apiResult.entries, variant);
     }
 
     return {
@@ -294,7 +370,7 @@ export const importGuestLogRemote = async (
     };
   }
 
-  return importGuestLog(incoming);
+  return importGuestLog(incoming, variant);
 };
 
 function escapeCsvValue(value: unknown) {

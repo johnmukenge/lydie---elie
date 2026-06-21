@@ -10,10 +10,15 @@ import {
   grantGuestLogAccess,
   hasGuestLogAccess,
   importGuestLogRemote,
+  type GuestLogVariant,
   type GuestLogEntry,
 } from '@/utils/guestLog';
 
-export default function CheckInAdminPanel() {
+type CheckInAdminPanelProps = {
+  variant?: GuestLogVariant;
+};
+
+export default function CheckInAdminPanel({ variant = 'religious' }: CheckInAdminPanelProps) {
   const searchParams = useSearchParams();
   const [guests, setGuests] = useState<GuestLogEntry[]>([]);
   const [hasAccess, setHasAccess] = useState(false);
@@ -25,24 +30,24 @@ export default function CheckInAdminPanel() {
   const isAdminMode = searchParams.get('mode') === 'admin';
 
   const refresh = useCallback(async () => {
-    const entries = await getGuestLog();
+    const entries = await getGuestLog(variant);
     setGuests(entries);
-  }, []);
+  }, [variant]);
 
   useEffect(() => {
     if (!isAdminMode) return;
-    if (hasGuestLogAccess()) {
+    if (hasGuestLogAccess(variant)) {
       setHasAccess(true);
       void refresh();
     }
-  }, [isAdminMode, refresh]);
+  }, [isAdminMode, refresh, variant]);
 
   if (!isAdminMode) return null;
 
   const handleUnlock = async () => {
     const code = window.prompt('Code d\'accès (4 chiffres) :');
     if (!code) return;
-    if (grantGuestLogAccess(code)) {
+    if (grantGuestLogAccess(code, variant)) {
       setHasAccess(true);
       await refresh();
     } else {
@@ -57,7 +62,7 @@ export default function CheckInAdminPanel() {
   };
 
   const handleCheckIn = async (entry: GuestLogEntry) => {
-    const result = await checkInGuestByInvitation(entry.invitationCode, entry.verificationHash);
+    const result = await checkInGuestByInvitation(entry.invitationCode, entry.verificationHash, variant);
     await refresh();
     if (result === 'checked-in')
       showFeedback(`✅ ${entry.firstName} ${entry.lastName} — Check-in confirmé !`, 'ok');
@@ -74,7 +79,7 @@ export default function CheckInAdminPanel() {
       void (async () => {
         try {
           const parsed = JSON.parse(evt.target?.result as string) as GuestLogEntry[];
-          const { added, skipped } = await importGuestLogRemote(parsed);
+          const { added, skipped } = await importGuestLogRemote(parsed, variant);
           await refresh();
           showFeedback(`✅ ${added} ajouté(s), ${skipped} ignoré(s) (déjà présents).`, 'ok');
         } catch {
@@ -188,13 +193,13 @@ export default function CheckInAdminPanel() {
               </button>
               <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
               <button
-                onClick={() => downloadGuestLogFile(guests)}
+                  onClick={() => downloadGuestLogFile(guests, variant)}
                 className="rounded-full border border-rose-200 bg-white px-4 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition"
               >
                 ↓ Export JSON
               </button>
               <button
-                onClick={() => downloadGuestLogCsv(guests)}
+                  onClick={() => downloadGuestLogCsv(guests, variant)}
                 className="rounded-full border border-rose-200 bg-white px-4 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition"
               >
                 ↓ Export CSV

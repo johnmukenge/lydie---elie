@@ -114,3 +114,87 @@ export const weddingData: WeddingData = {
   ],
   audioUrl: '/media/etoile-du-matin.amr',
 };
+
+export const traditionalWeddingData: WeddingData = {
+  couple: {
+    bride: 'Lydie',
+    groom: 'Elie',
+    displayName: 'Lydie & Elie',
+  },
+  weddingDate: '2026-07-16T14:00:00+02:00',
+  venue: {
+    name: 'Salle Événementiel - New Foncobel',
+    city: 'Kinshasa, Democratic Republic of Congo',
+    address: 'Avenue Kasavubu - Entre Bongolo et Force - Réf. Station Bongolo',
+  },
+  heroImage:
+    'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=2200&q=80',
+  dressCode: 'Tenue traditionnelle congolaise - Pagne, Kente, Wax ou vêtements de cérémonie',
+  schedule: [
+    {
+      title: 'Arrivée des familles et présentations',
+      time: '14:00',
+      description: 'Rassemblement des familles et présentation officielle des deux clans aux sons des tam-tams.',
+    },
+    {
+      title: 'Cérémonie traditionnelle du mariage',
+      time: '15:30',
+      description: 'Célébration des rituels traditionnels congolais avec bénédictions des ancêtres et échanges solennels.',
+    },
+    {
+      title: 'Danses et célébrations',
+      time: '17:30',
+      description: 'Danses traditionnelles, démonstrations de joie et musiques folkloriques du Congo.',
+    },
+    {
+      title: 'Festin traditionnel',
+      time: '19:00',
+      description: 'Repas avec les mets traditionnels et réjouissances en famille.',
+    },
+  ],
+  gallery: [
+    {
+      id: 1,
+      alt: 'Elie and Lydie portrait 1',
+      src: '/media/elie1.jpeg?v=20250607',
+      width: 1202,
+      height: 1599,
+    },
+    {
+      id: 2,
+      alt: 'Lydie portrait',
+      src: '/media/lydie1.jpeg',
+      width: 608,
+      height: 1080,
+    },
+    {
+      id: 3,
+      alt: 'Elie portrait',
+      src: '/media/elie2.jpeg',
+      width: 1202,
+      height: 1599,
+    },
+    {
+      id: 4,
+      alt: 'Lydie portrait 2',
+      src: '/media/lydie2.jpeg?v=20250607',
+      width: 720,
+      height: 1280,
+    },
+    {
+      id: 5,
+      alt: 'Wedding hall view 1',
+      src: '/media/salle1.jpg',
+      width: 843,
+      height: 1262,
+    },
+    {
+      id: 6,
+      alt: 'Wedding hall view 2',
+      src: '/media/salle2.jpg',
+      width: 2048,
+      height: 1366,
+    },
+  ],
+  audioUrl: '/media/etoile-du-matin.amr',
+};
