@@ -10,7 +10,7 @@ import RsvpSection from '@/components/RsvpSection';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import GuestCheckInPanel from '@/components/GuestCheckInPanel';
 import CheckInAdminPanel from '@/components/CheckInAdminPanel';
-import WeddingTypeSelector from '@/components/WeddingTypeSelector';
+// import WeddingTypeSelector from '@/components/WeddingTypeSelector'; // TRADITIONAL — TEMPORAIREMENT DÉSACTIVÉ
 import { useLanguage } from '@/context/LanguageContext';
 
 const getLocale = (language: 'en' | 'fr' | 'it') => {
@@ -41,7 +41,7 @@ export default function PageContent() {
   return (
     <main className="bg-rose-50 text-rose-900">
       <LanguageSwitcher />
-      <WeddingTypeSelector currentType="religious" />
+      {/* <WeddingTypeSelector currentType="religious" /> */}{/* TRADITIONAL — TEMPORAIREMENT DÉSACTIVÉ */}
       <Suspense fallback={null}>
         <GuestCheckInPanel />
       </Suspense>
